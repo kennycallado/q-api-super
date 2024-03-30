@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  surrealdb:
+    image: kennycallado/q-api-store-demo:latest
+    container_name: surrealdb
+    ports:
+      - "8000:8000"
+    command:
+      # - start
+      # - memory
+      - -A
+      # - --auth
+      - --no-banner
+      # - --log=trace
+      # - --log=info
+      - --user=root
+      - --pass=root
+      - --bind=0.0.0.0:8000
