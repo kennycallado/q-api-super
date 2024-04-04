@@ -9,6 +9,9 @@ use surrealdb::{Notification, Surreal};
 use crate::models::center::Center;
 use crate::models::project::Project;
 
+use super::events::EventsManager;
+use super::interv_users::IntervUsersManager;
+
 struct Listener(pub Arc<dyn ProjectsManagerTrait>);
 
 pub struct ProjectsManager {
@@ -18,7 +21,9 @@ pub struct ProjectsManager {
 }
 
 impl ProjectsManager {
-    pub async fn new(url: String) -> Self {
+    pub async fn new(url: impl Into<String>) -> Self {
+        let url = url.into();
+
         let db = any::connect(format!("ws://{}", url))
             .await
             .expect("Failed to connect to database");
@@ -37,13 +42,12 @@ impl ProjectsManager {
 
         Self {
             db,
-            db_url: url,
-            listeners: vec![],
+            db_url: url.to_string(),
+            listeners: vec![
+                Listener(Arc::new(EventsManager::new(&url).await)),
+                Listener(Arc::new(IntervUsersManager::new(&url).await)),
+            ],
         }
-    }
-
-    pub fn add_listener(&mut self, f: impl ProjectsManagerTrait + 'static) {
-        self.listeners.push(Listener(Arc::new(f)));
     }
 
     pub async fn start(&mut self) -> Result<(), &str> {
@@ -112,16 +116,22 @@ impl ProjectsManager {
                 self.execute_migrations(&center.name, &project.name);
 
                 // {{{ info for sc user
-                let sql = format!("
+                let sql = format!(
+                    "
                     USE NS {} DB {};
                     DEFINE TOKEN user_scope ON SCOPE user TYPE HS256 VALUE '{}';
-                    ", &center.name, &project.name, &project.token);
+                    ",
+                    &center.name, &project.name, &project.token
+                );
 
                 self.db.query(sql).await.unwrap();
                 // }}}
 
                 for handler in &self.listeners {
-                    handler.0.on_project_create(&project.name, &center.name).await;
+                    handler
+                        .0
+                        .on_project_create(&project.name, &center.name)
+                        .await;
                 }
             }
             surrealdb::Action::Update => {
@@ -184,7 +194,7 @@ impl ProjectsManager {
 
 #[async_trait::async_trait]
 pub trait ProjectsManagerTrait: Send + Sync + 'static {
-    async fn on_init(&self,           project: &str, center: &str);
+    async fn on_init(&self, project: &str, center: &str);
     async fn on_project_create(&self, project: &str, center: &str);
     async fn on_project_update(&self, project: &str);
     async fn on_project_delete(&self, project: &str);

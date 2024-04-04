@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use surrealdb::sql::Thing;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Center {
     pub id: Option<Thing>,
     pub name: String,

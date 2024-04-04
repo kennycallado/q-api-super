@@ -1,9 +1,9 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use surrealdb::sql::Thing;
 
 use super::center::Center;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Project {
     pub id: Option<Thing>,
     pub name: String,
@@ -12,7 +12,7 @@ pub struct Project {
     pub token: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct ProjectWithCenter {
     pub id: Option<Thing>,
     pub name: String,
