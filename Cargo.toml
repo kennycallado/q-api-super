@@ -8,6 +8,7 @@ async-trait = "0.1.79"
 futures = "0.3.30"
 once_cell = "1.19.0"
 serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.115"
 surrealdb = { version = "1.3.1", features = ["protocol-http"] }
 tokio = { version = "1.36.0", features = ["full"] }
 tokio-cron-scheduler = "0.10.0"
