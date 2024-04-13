@@ -54,20 +54,36 @@ impl IntervUsersManager {
 
     async fn handle_actions(
         &self,
-        _center: &str,
-        _project: &str,
+        center: &str,
+        project: &str,
         notification: Notification<IntervUser>,
     ) {
         let user = notification.data;
 
         match notification.action {
-            surrealdb::Action::Create => { /* println!("User created: {}", user.id) */ }
+            surrealdb::Action::Create => {
+                println!("User created: {}", user.id);
+
+                // self.db.use_ns(center).use_db(project).await.unwrap();
+                // self.db
+                //     .query("fn::on_init($b_id);")
+                //     .bind(("b_id", user.id))
+                //     .await
+                //     .unwrap();
+            }
             surrealdb::Action::Update => {
                 println!("User updated: {}", user.id);
 
                 if user.completed {
+                    self.db.use_ns(center).use_db(project).await.unwrap();
                     self.db
                         .query(r#"
+                            -- TODO: check if user is parti
+                            -- not needed, since there is an assertion
+                            -- IF $b_id.role IS NOT 'parti' { RETURN; };
+
+                            -- fn::on_done($b_id);
+
                             LET $q_score = SELECT VALUE score FROM ONLY (
                                 SELECT created, score FROM ONLY scores WHERE user IS $b_id ORDER BY created DESC LIMIT 1
                             ) LIMIT 1;
