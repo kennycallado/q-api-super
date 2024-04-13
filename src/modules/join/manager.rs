@@ -101,21 +101,33 @@ impl JoinManager {
                 let sql = format!(
                     r#"
                     USE NS {} DB {};
-                    UPDATE $b_user_id SET role = $b_role, pass = $b_pass;"#,
+                    CREATE $b_user_id SET role = $b_role, pass = $b_pass;"#,
                     center_project.0, center_project.1
                 );
 
-                self.db
+                let query = self
+                    .db
                     .query(sql)
                     .bind(("b_user_id", &join.user))
                     .bind(("b_role", role.as_ref().unwrap()))
-                    .bind(("b_pass", pass.as_ref().unwrap()))
-                    .await
-                    .unwrap();
+                    .bind(("b_pass", pass.as_ref().unwrap()));
 
-                // WARNING:
-                // send mail to user with pass
-                println!("\nUser {} pass: {}\n", join.user, pass.unwrap());
+                match query.await {
+                    Ok(_res) => {
+                    // Ok(mut res) => {
+                        // WARNING:
+                        // send mail to user with pass
+
+                        // let inter_user: Option<IntervUser> = res.take(res.num_statements() - 1).unwrap();
+                        // let inter_user = inter_user.as_ref().unwrap();
+
+                        // println!("\nUser {} role: {}", inter_user.id, inter_user.role);
+                        println!("User {} pass: {}\n", join.user, pass.unwrap());
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to create interv_user: {}", e);
+                    }
+                }
             }
             surrealdb::Action::Update => {
                 // println!("Join updated: {}", join.id);
