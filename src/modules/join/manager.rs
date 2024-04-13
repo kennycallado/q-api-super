@@ -114,7 +114,7 @@ impl JoinManager {
 
                 match query.await {
                     Ok(_res) => {
-                    // Ok(mut res) => {
+                        // Ok(mut res) => {
                         // WARNING:
                         // send mail to user with pass
 

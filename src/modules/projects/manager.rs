@@ -187,6 +187,7 @@ impl ProjectsManager {
                 project_name,
                 String::from_utf8(buffer).unwrap()
             );
+
             p_db.query(sql).await.unwrap();
         });
     }
