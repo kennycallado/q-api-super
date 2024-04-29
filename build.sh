@@ -4,8 +4,8 @@
 set -e
 
 declare -A targets
-targets["linux/amd64"]="x86_64-unknown-linux-musl"
 targets["linux/arm64"]="aarch64-unknown-linux-musl"
+targets["linux/amd64"]="x86_64-unknown-linux-musl"
 
 package_name=$(cat Cargo.toml | grep 'name' | awk '{print $3}' | tr -d '"')
 
