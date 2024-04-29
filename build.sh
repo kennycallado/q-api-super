@@ -8,7 +8,18 @@ targets["linux/amd64"]="x86_64-unknown-linux-musl"
 targets["linux/arm64"]="aarch64-unknown-linux-musl"
 
 package_name=$(cat Cargo.toml | grep 'name' | awk '{print $3}' | tr -d '"')
-package_version=$(cat Cargo.toml | grep 'version' | head -1 | awk '{print $3}' | tr -d '"')
+
+version_from_cargo=$(cat Cargo.toml | grep 'version' | head -1 | awk '{print $3}' | tr -d '"')
+version_from_git=$(git describe --tags --abbrev=0)
+
+if [[ $version_from_cargo != $version_from_git ]]; then
+  echo "Version mismatch between Cargo.toml and git tags"
+  echo "Cargo.toml: $version_from_cargo"
+  echo "Git tags: $version_from_git"
+  exit 1
+fi
+
+package_version=$(git describe --tags --abbrev=0)
 
 echo "package_name: $package_name"
 echo "package_version: $package_version"
