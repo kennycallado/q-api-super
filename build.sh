@@ -9,7 +9,7 @@ targets["linux/arm64"]="aarch64-unknown-linux-musl"
 
 package_name=$(cat Cargo.toml | grep 'name' | awk '{print $3}' | tr -d '"')
 
-version_from_cargo=$(cat Cargo.toml | grep 'version' | head -1 | awk '{print $3}' | tr -d '"')
+version_from_cargo="v$(cat Cargo.toml | grep 'version' | head -1 | awk '{print $3}' | tr -d '"')"
 version_from_git=$(git describe --tags --abbrev=0)
 
 if [[ $version_from_cargo != $version_from_git ]]; then
@@ -42,10 +42,10 @@ main() {
 
   podman system prune -f
 
-  podman_manifest "v$package_version"
+  podman_manifest "$package_version"
   podman_manifest "latest"
 
-  podman rmi kennycallado/${package_name}:v${package_version}
+  podman rmi kennycallado/${package_name}:${package_version}
   podman rmi kennycallado/${package_name}:latest
 
   podman system prune -f
@@ -54,15 +54,15 @@ main() {
 check_images() {
   for platform in "${!targets[@]}"; do
     tag=$(echo "${platform//\//_}" | tr -d 'linux_' | xargs -I {} echo {})
-    if podman inspect kennycallado/${package_name}:v${package_version}-${tag} &> /dev/null; then
-      echo "Removing existing image kennycallado/${package_name}:v${package_version}-${tag}"
-      podman rmi kennycallado/${package_name}:v${package_version}-${tag}
+    if podman inspect kennycallado/${package_name}:${package_version}-${tag} &> /dev/null; then
+      echo "Removing existing image kennycallado/${package_name}:${package_version}-${tag}"
+      podman rmi kennycallado/${package_name}:${package_version}-${tag}
     fi
   done
 
-  if podman inspect kennycallado/${package_name}:v${package_version} &> /dev/null; then
-    echo "Removing existing image kennycallado/${package_name}:v${package_version}"
-    podman rmi kennycallado/${package_name}:v${package_version}
+  if podman inspect kennycallado/${package_name}:${package_version} &> /dev/null; then
+    echo "Removing existing image kennycallado/${package_name}:${package_version}"
+    podman rmi kennycallado/${package_name}:${package_version}
   fi
 
   if podman inspect kennycallado/${package_name}:latest &> /dev/null; then
@@ -87,7 +87,7 @@ podman_manifest() {
     echo "arch: $arch"
     echo "------------------------"
 
-    podman manifest add --arch "${tag}" kennycallado/"${package_name}":"${version}" kennycallado/"${package_name}":v"${package_version}"-"${tag}"
+    podman manifest add --arch "${tag}" kennycallado/"${package_name}":"${version}" kennycallado/"${package_name}":"${package_version}"-"${tag}"
     podman manifest push kennycallado/"${package_name}":"${version}" docker://kennycallado/"${package_name}":"${version}"
   done
 }
@@ -99,13 +99,13 @@ podman_build() {
 
   podman build --no-cache --pull \
     --platform ${platform} \
-    -t kennycallado/${package_name}:v${package_version}-${tag} \
+    -t kennycallado/${package_name}:${package_version}-${tag} \
     --build-arg PACKAGE_NAME=${package_name} \
     --build-arg TARGET=${target} \
     -f ./Containerfile .
 
-  podman push kennycallado/${package_name}:v${package_version}-${tag}
-  podman rmi  kennycallado/${package_name}:v${package_version}-${tag}
+  podman push kennycallado/${package_name}:${package_version}-${tag}
+  podman rmi  kennycallado/${package_name}:${package_version}-${tag}
 }
 
 main "$@"
