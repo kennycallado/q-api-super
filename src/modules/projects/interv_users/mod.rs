@@ -3,7 +3,7 @@ use surrealdb::engine::any::{self, Any};
 use surrealdb::opt::auth::Root;
 use surrealdb::{Notification, Surreal};
 
-use crate::models::user::IntervUser;
+use crate::models::user::{IntervUser, IntervUserPrev, UserState};
 use crate::modules::projects::manager::ProjectsManagerTrait;
 
 #[derive(Clone)]
@@ -56,50 +56,40 @@ impl IntervUsersManager {
         &self,
         center: &str,
         project: &str,
-        notification: Notification<IntervUser>,
+        notification: Notification<IntervUserPrev>,
     ) {
-        let user = notification.data;
+        let user: IntervUser = notification.data.into();
 
         match notification.action {
-            surrealdb::Action::Create => {
-                println!("User created: {}", user.id);
-
-                // self.db.use_ns(center).use_db(project).await.unwrap();
-                // self.db
-                //     .query("fn::on_init($b_id);")
-                //     .bind(("b_id", user.id))
-                //     .await
-                //     .unwrap();
-            }
             surrealdb::Action::Update => {
-                println!("User updated: {}", user.id);
+                // println!("User updated: {}", user.id);
 
-                if user.completed {
-                    self.db.use_ns(center).use_db(project).await.unwrap();
-                    self.db
-                        .query(r#"
-                            -- TODO: check if user is parti
-                            -- not needed, since there is an assertion
-                            -- IF $b_id.role IS NOT 'parti' { RETURN; };
+                match user.state {
+                    UserState::Completed => {
+                        let state: String = user.state.into();
+                        self.db.use_ns(center).use_db(project).await.unwrap();
+                        self.db
+                            .query(r#"
+                                LET $q_score = SELECT VALUE score FROM ONLY (
+                                    SELECT created, score FROM ONLY scores WHERE user IS $b_id ORDER BY created DESC LIMIT 1
+                                ) LIMIT 1;
 
-                            -- fn::on_done($b_id);
+                                USE NS global DB main;
 
-                            LET $q_score = SELECT VALUE score FROM ONLY (
-                                SELECT created, score FROM ONLY scores WHERE user IS $b_id ORDER BY created DESC LIMIT 1
-                            ) LIMIT 1;
-
-                            USE NS global DB main;
-
-                            BEGIN TRANSACTION;
-                                UPDATE join SET completed = true, updated = time::now(), score = $q_score WHERE in IS $b_id;
-                                UPDATE $b_id SET project = NONE; -- should be done by join events
-                            COMMIT TRANSACTION;
-                        "#)
-                        .bind(("b_id", user.id))
-                        .await
-                        .unwrap();
+                                BEGIN TRANSACTION;
+                                    UPDATE join SET state = $b_state, score = $q_score, updated = time::now() WHERE in IS $b_id;
+                                    UPDATE $b_id SET project = NONE; -- should be done by join events
+                                COMMIT TRANSACTION;
+                            "#)
+                            .bind(("b_id", user.id))
+                            .bind(("b_state", state))
+                            .await
+                            .unwrap();
+                    },
+                    _ => { }
                 }
             }
+            surrealdb::Action::Create => { /* println!("User created: {}", user.id) */ }
             surrealdb::Action::Delete => { /* println!("User deleted: {}", user.id) */ }
             _ => {}
         }

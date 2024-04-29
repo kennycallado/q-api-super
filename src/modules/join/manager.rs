@@ -5,6 +5,7 @@ use surrealdb::opt::auth::Root;
 use surrealdb::{Notification, Surreal};
 
 use crate::models::join::Join;
+use crate::models::user::{IntervUser, IntervUserPrev};
 
 pub struct JoinManager {
     db: Surreal<Any>,
@@ -113,16 +114,42 @@ impl JoinManager {
                     .bind(("b_pass", pass.as_ref().unwrap()));
 
                 match query.await {
-                    Ok(_res) => {
-                        // Ok(mut res) => {
-                        // WARNING:
-                        // send mail to user with pass
+                    Ok(mut res) => {
+                        let inter_user: IntervUser = res
+                            .take(res.num_statements() - 1)
+                            .map(|row: Option<IntervUserPrev>| {
+                                let user = row.expect("User not found");
 
-                        // let inter_user: Option<IntervUser> = res.take(res.num_statements() - 1).unwrap();
-                        // let inter_user = inter_user.as_ref().unwrap();
+                                IntervUser {
+                                    id: user.id,
+                                    pass: user.pass,
+                                    role: user.role,
+                                    state: user.state.into(),
+                                }
+                            })
+                            .map_err(|e| {
+                                eprintln!("Failed to get interv_user: {}", e);
+                            }).unwrap();
 
-                        // println!("\nUser {} role: {}", inter_user.id, inter_user.role);
-                        println!("User {} pass: {}\n", join.user, pass.unwrap());
+                        let state: String = inter_user.state.into();
+
+                        self.db
+                            .query(
+                                r#"
+                                UPDATE $b_join_id SET state = $b_state;
+                                "#,
+                            )
+                            .bind(("b_join_id", &join.id))
+                            .bind(("b_state", &state))
+                            .await
+                            .unwrap();
+
+                        println!(
+                            "User {} join project {} with pass:\n-> {}",
+                            join.user,
+                            join.project,
+                            pass.unwrap()
+                        );
                     }
                     Err(e) => {
                         eprintln!("Failed to create interv_user: {}", e);
@@ -132,13 +159,15 @@ impl JoinManager {
             surrealdb::Action::Update => {
                 // println!("Join updated: {}", join.id);
 
-                if join.completed {
-                    self.db
-                        .query(r#"UPDATE $b_user_id SET project = NONE;"#)
-                        .bind(("b_user_id", &join.user))
-                        .await
-                        .unwrap();
-                }
+                if let Some(state) = join.state {
+                    if state == "completed" {
+                        self.db
+                            .query(r#"UPDATE $b_user_id SET project = NONE;"#)
+                            .bind(("b_user_id", &join.user))
+                            .await
+                            .unwrap();
+                    }
+                };
             }
             surrealdb::Action::Delete => { /* println!("Join deleted: {}", join.id) */ }
             _ => println!("Action not supported"),
