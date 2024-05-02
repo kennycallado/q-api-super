@@ -23,17 +23,14 @@ pub struct ProjectsManager {
 }
 
 impl ProjectsManager {
-    pub async fn new(url: impl Into<String>) -> Self {
-        let url = url.into();
+    pub async fn new(url: impl Into<String>, cred: Root<'_>) -> Self {
+        let url: String = url.into();
 
         let db = any::connect(format!("ws://{}", url))
             .await
             .expect("Failed to connect to database");
 
-        db.signin(Root {
-            username: "root",
-            password: "root",
-        })
+        db.signin(cred)
         .await
         .expect("Failed to signin");
 
