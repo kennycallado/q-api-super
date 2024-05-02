@@ -5,6 +5,8 @@ use surrealdb::engine::any::{self, Any};
 use surrealdb::engine::remote::http::Http;
 use surrealdb::opt::auth::Root;
 use surrealdb::{Notification, Surreal};
+use tempdir::TempDir;
+use tokio::io::AsyncWriteExt;
 
 use crate::models::center::Center;
 use crate::models::project::Project;
@@ -181,14 +183,24 @@ impl ProjectsManager {
                 }
             }
 
-            let sql = format!(
-                "USE NS {} DB {}; {};",
-                center_name,
-                project_name,
-                String::from_utf8(buffer).unwrap()
-            );
+            let dir_name = format!("temp-{}_{}", center_name, project_name);
 
-            p_db.query(sql).await.unwrap();
+            // create a temp dir
+            let dir = TempDir::new(&dir_name).unwrap();
+            let path = dir.path().join("dump.surql");
+
+            // save the buffer into a file
+            let mut file = tokio::fs::File::create(&path).await.unwrap();
+            file.write_all(&buffer).await.unwrap();
+
+
+            // import the migration
+            db.use_ns(center_name).use_db(project_name).await.unwrap();
+            db.import(path).await.unwrap();
+
+            // cleanup
+            // drop(dir);
+            dir.close().unwrap();
         });
     }
 }
