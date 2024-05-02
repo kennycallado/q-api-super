@@ -156,7 +156,7 @@ impl JoinManager {
                             "User {} join project {} with pass:\n-> {}",
                             join.user,
                             join.project,
-                            pass.unwrap()
+                            pass
                         );
                     }
                     Err(e) => {
