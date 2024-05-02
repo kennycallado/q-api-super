@@ -158,7 +158,7 @@ impl ProjectsManager {
 
         let center_name = center_name.into();
         let project_name = project_name.into();
-        let p_db = self.db.clone();
+        // let p_db = self.db.clone();
         let db_url = self.db_url.clone();
 
         tokio::spawn(async move {
