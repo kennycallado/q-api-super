@@ -99,6 +99,14 @@ impl JoinManager {
                 let role: Option<String> = res.take(res.num_statements() - 1).unwrap();
                 let pass: Option<String> = res.take(res.num_statements() - 1).unwrap();
 
+                if role.is_none() || pass.is_none() {
+                    eprintln!("Failed to get role or pass");
+                    return Ok(());
+                }
+
+                let role = role.unwrap();
+                let pass = pass.unwrap();
+
                 let sql = format!(
                     r#"
                     USE NS {} DB {};
@@ -110,21 +118,21 @@ impl JoinManager {
                     .db
                     .query(sql)
                     .bind(("b_user_id", &join.user))
-                    .bind(("b_role", role.as_ref().unwrap()))
-                    .bind(("b_pass", pass.as_ref().unwrap()));
+                    .bind(("b_role", &role))
+                    .bind(("b_pass", &pass));
 
                 match query.await {
                     Ok(mut res) => {
                         let inter_user: IntervUser = res
                             .take(res.num_statements() - 1)
                             .map(|row: Option<IntervUserPrev>| {
-                                let user = row.expect("User not found");
+                                let row = row.unwrap();
 
                                 IntervUser {
-                                    id: user.id,
-                                    pass: user.pass,
-                                    role: user.role,
-                                    state: user.state.into(),
+                                    id: row.id,
+                                    pass: row.pass,
+                                    role: row.role,
+                                    state: row.state.into(),
                                 }
                             })
                             .map_err(|e| {
