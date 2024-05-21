@@ -6,20 +6,27 @@ use surrealdb::{Notification, Surreal};
 
 use crate::models::join::Join;
 use crate::models::user::{IntervUser, IntervUserPrev};
+use crate::modules::projects::manager::Credentials;
 
 pub struct JoinManager {
     db: Surreal<Any>,
+    cred: Credentials,
 }
 
 impl JoinManager {
-    pub async fn new(url: impl Into<String>, cred: Root<'_>) -> Self {
+    pub async fn new(url: impl Into<String>, cred: Credentials) -> Self {
         let url: String = url.into();
 
         let db = any::connect(format!("ws://{}", url))
             .await
             .expect("Failed to connect to database");
 
-        db.signin(cred)
+        let foo = Root {
+            username: cred.user.as_str(),
+            password: cred.pass.as_str(),
+        };
+
+        db.signin(foo)
         .await
         .expect("Failed to signin");
 
@@ -28,7 +35,7 @@ impl JoinManager {
             .await
             .expect("Failed to use ns and db");
 
-        Self { db }
+        Self { db, cred }
     }
 
     pub async fn start(&self) -> Result<(), &str> {
