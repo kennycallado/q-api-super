@@ -5,7 +5,7 @@ use surrealdb::sql::Thing;
 #[derive(Debug, Deserialize)]
 pub struct User {
     pub id: Thing,
-    pub role: String,
+    // pub role: String,
     pub username: String,
     pub password: String,
     pub project: Option<Thing>,
@@ -15,7 +15,7 @@ pub struct User {
 #[derive(Debug, Deserialize)]
 pub struct IntervUserPrev {
     pub id: Thing,
-    pub pass: String,
+    // pub pass: String,
     pub role: String,
     pub state: String,
 }
@@ -23,7 +23,7 @@ pub struct IntervUserPrev {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct IntervUser {
     pub id: Thing,
-    pub pass: String,
+    // pub pass: String,
     pub role: String,
     pub state: UserState,
 }
@@ -40,7 +40,7 @@ impl From<IntervUserPrev> for IntervUser {
     fn from(user: IntervUserPrev) -> IntervUser {
         IntervUser {
             id: user.id,
-            pass: user.pass,
+            // pass: user.pass,
             role: user.role,
             state: user.state.into(),
         }
