@@ -19,7 +19,8 @@ if [[ $version_from_cargo != $version_from_git ]]; then
   exit 1
 fi
 
-package_version=$(git describe --tags --abbrev=0)
+package_version=$version_from_git
+# package_version="v0.2.6"
 
 echo "package_name: $package_name"
 echo "package_version: $package_version"
