@@ -6,25 +6,30 @@ use surrealdb::{Notification, Surreal};
 use crate::models::user::{IntervUser, IntervUserPrev, UserState};
 use crate::modules::projects::manager::ProjectsManagerTrait;
 
+use super::manager::Credentials;
+
 #[derive(Clone)]
 pub struct IntervUsersManager {
     db: Surreal<Any>,
+    cred: Credentials
 }
 
 impl IntervUsersManager {
-    pub async fn new(url: impl Into<String>) -> Self {
+    pub async fn new(url: impl Into<String>, cred: Credentials) -> Self {
         let db = any::connect(format!("ws://{}", url.into()))
             .await
             .expect("Failed to connect to database");
 
-        db.signin(Root {
-            username: "root",
-            password: "root",
-        })
+        let foo = Root {
+            username: cred.user.as_str(),
+            password: cred.pass.as_str(),
+        };
+
+        db.signin(foo)
         .await
         .expect("Failed to signin");
 
-        Self { db }
+        Self { db, cred }
     }
 
     fn spawn_stream(&self, center: impl Into<String>, project: impl Into<String>) {

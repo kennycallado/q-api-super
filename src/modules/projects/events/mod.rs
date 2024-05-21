@@ -12,14 +12,17 @@ use crate::modules::projects::manager::ProjectsManagerTrait;
 
 use crate::models::event::Event;
 
+use super::manager::Credentials;
+
 #[derive(Clone)]
 pub struct EventsManager {
     db: Surreal<Any>,
+    cred: Credentials,
     sched: Arc<Mutex<JobScheduler>>,
 }
 
 impl EventsManager {
-    pub async fn new(url: impl Into<String>) -> Self {
+    pub async fn new(url: impl Into<String>, cred: Credentials) -> Self {
         let sched = JobScheduler::new().await.unwrap();
         sched.start().await.unwrap();
 
@@ -27,15 +30,18 @@ impl EventsManager {
             .await
             .expect("Failed to connect to database");
 
-        db.signin(Root {
-            username: "root",
-            password: "root",
-        })
+        let foo = Root {
+            username: cred.user.as_str(),
+            password: cred.pass.as_str(),
+        };
+
+        db.signin(foo)
         .await
         .expect("Failed to signin");
 
         Self {
             db,
+            cred,
             sched: Arc::new(Mutex::new(sched)),
         }
     }

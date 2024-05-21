@@ -14,23 +14,35 @@ use crate::models::project::Project;
 use super::events::EventsManager;
 use super::interv_users::IntervUsersManager;
 
+#[derive(Clone)]
+pub struct Credentials {
+    pub user: String,
+    pub pass: String,
+}
+
 struct Listener(pub Arc<dyn ProjectsManagerTrait>);
 
 pub struct ProjectsManager {
     db: Surreal<Any>,
     db_url: String,
+    cred: Credentials,
     listeners: Vec<Listener>,
 }
 
 impl ProjectsManager {
-    pub async fn new(url: impl Into<String>, cred: Root<'_>) -> Self {
+    pub async fn new(url: impl Into<String>, cred: Credentials) -> Self {
         let url: String = url.into();
 
         let db = any::connect(format!("ws://{}", url))
             .await
             .expect("Failed to connect to database");
 
-        db.signin(cred)
+        let foo = Root {
+            username: cred.user.as_str(),
+            password: cred.pass.as_str(),
+        };
+
+        db.signin(foo)
         .await
         .expect("Failed to signin");
 
@@ -39,13 +51,16 @@ impl ProjectsManager {
             .await
             .expect("Failed to use ns and db");
 
+        let listeners = vec![
+            Listener(Arc::new(EventsManager::new(&url, cred.clone()).await)),
+            Listener(Arc::new(IntervUsersManager::new(&url, cred.clone()).await)),
+        ];
+
         Self {
             db,
+            cred,
             db_url: url.to_string(),
-            listeners: vec![
-                Listener(Arc::new(EventsManager::new(&url).await)),
-                Listener(Arc::new(IntervUsersManager::new(&url).await)),
-            ],
+            listeners,
         }
     }
 
@@ -160,12 +175,13 @@ impl ProjectsManager {
         let project_name = project_name.into();
         // let p_db = self.db.clone();
         let db_url = self.db_url.clone();
+        let cred = self.cred.clone();
 
         tokio::spawn(async move {
             let db = Surreal::new::<Http>(db_url).await.unwrap();
             db.signin(Root {
-                username: "root",
-                password: "root",
+                username: cred.user.as_str(),
+                password: cred.pass.as_str(),
             })
             .await
             .unwrap();

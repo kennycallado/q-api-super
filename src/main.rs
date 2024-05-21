@@ -2,6 +2,7 @@ mod models;
 mod modules;
 
 use surrealdb::opt::auth::Root;
+use modules::projects::manager::Credentials;
 
 use crate::modules::join::manager::JoinManager;
 use crate::modules::projects::manager::ProjectsManager;
@@ -15,15 +16,15 @@ async fn main() {
     let db_user = std::env::var("DB_USER").unwrap_or_else(|_| "root".to_string());
     let db_pass = std::env::var("DB_PASS").unwrap_or_else(|_| "root".to_string());
 
-    let cred = Root {
-        username: db_user.as_str(),
-        password: db_pass.as_str(),
-    };
-
     let db_url = if db_port.is_empty() {
         db_host
     } else {
         format!("{}:{}", db_host, db_port)
+    };
+
+    let cred = Credentials {
+        user: db_user,
+        pass: db_pass,
     };
 
     // let u_manager = UserManager::new(&db_url).await;
