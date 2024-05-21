@@ -65,11 +65,6 @@ impl JoinManager {
         Ok(())
     }
 
-    // async fn init_existing(&self) -> Result<(), &str> {
-    //     // not sure if should be implemented
-    //     Ok(())
-    // }
-
     async fn handle_actions(&self, notification: Notification<Join>) -> Result<(), &str> {
         let join = notification.data;
 
@@ -81,43 +76,47 @@ impl JoinManager {
                     .db
                     .query(
                         r#"
-                        RETURN rand::ulid();
-                        SELECT VALUE role FROM ONLY $b_user_id;
-                        SELECT name, center.name as center FROM ONLY $b_project_id;"#,
+                        SELECT
+                            out.center.name as center,
+                            out.name as name,
+                            (<-users->roled[WHERE out IS $parent.out.center].role)[0] AS role
+                            FROM ONLY $b_id;
+                        "#,
                     )
-                    .bind(("b_project_id", &join.project))
-                    .bind(("b_user_id", &join.user))
+                    .bind(("b_id", &join.id))
                     .await
                     .unwrap();
 
-                let center_project: (String, String) = res
+                let center_name_role: (String, String, String) = res
                     .take(res.num_statements() - 1)
                     .map(|row: Option<Value>| {
                         let row = row.unwrap();
 
-                        let name = row["name"].to_string().trim_matches('"').to_string();
                         let center = row["center"].to_string().trim_matches('"').to_string();
+                        let name = row["name"].to_string().trim_matches('"').to_string();
+                        let role = row["role"].to_string().trim_matches('"').to_string();
 
-                        (center, name)
+                        (center, name, role)
                     })
-                    .unwrap();
+                    .map_err(|e| {
+                        eprintln!("Failed to get interv_user: {}", e);
+                        return "Error: interv_user"
+                    })?;
 
-                let role: Option<String> = res.take(res.num_statements() - 1).unwrap();
-                let pass: Option<String> = res.take(res.num_statements() - 1).unwrap();
+                let center = center_name_role.0;
+                let name = center_name_role.1;
+                let role = center_name_role.2;
 
-                if role.is_none() || pass.is_none() {
-                    eprintln!("Failed to get role or pass");
-                    return Ok(());
+                match role.as_str() {
+                    "parti" | "guest" => { },
+                    _ => { return Ok(()) }
                 }
-
-                let role = role.unwrap();
-                let pass = pass.unwrap();
 
                 let sql = format!(
                     r#"
                     USE NS {} DB {};
-                    CREATE $b_user_id SET role = $b_role, pass = $b_pass;"#,
-                    center_project.0, center_project.1
+                    CREATE $b_user_id SET role = $b_role;"#,
+                    &center, &name
                 );
 
                 let query = self
@@ -125,25 +124,31 @@ impl JoinManager {
                     .query(sql)
                     .bind(("b_user_id", &join.user))
                     .bind(("b_role", &role))
-                    .bind(("b_pass", &pass));
+                    ;
 
                 match query.await {
                     Ok(mut res) => {
-                        let inter_user: IntervUser = res
+                        let inter_user: Result<IntervUser, ()> = res
                             .take(res.num_statements() - 1)
                             .map(|row: Option<IntervUserPrev>| {
                                 let row = row.unwrap();
 
                                 IntervUser {
                                     id: row.id,
-                                    pass: row.pass,
                                     role: row.role,
                                     state: row.state.into(),
                                 }
                             })
                             .map_err(|e| {
                                 eprintln!("Failed to get interv_user: {}", e);
-                            }).unwrap();
+                                return ();
+                            });
+
+                        if let Err(_) = inter_user {
+                            eprintln!("Failed to get interv_user");
+                            return Ok(());
+                        }
+                        let inter_user = inter_user.unwrap();
 
                         let state: String = inter_user.state.into();
 
@@ -159,10 +164,9 @@ impl JoinManager {
                             .unwrap();
 
                         println!(
-                            "User {} join project {} with pass:\n-> {}",
+                            "User {} join project {} \n",
                             join.user,
                             join.project,
-                            pass
                         );
                     }
                     Err(e) => {
@@ -173,15 +177,16 @@ impl JoinManager {
             surrealdb::Action::Update => {
                 // println!("Join updated: {}", join.id);
 
-                if let Some(state) = join.state {
-                    if state == "completed" {
-                        self.db
-                            .query(r#"UPDATE $b_user_id SET project = NONE;"#)
-                            .bind(("b_user_id", &join.user))
-                            .await
-                            .unwrap();
-                    }
-                };
+                // done by an event
+                // if let Some(state) = join.state {
+                //     if state == "completed" {
+                //         self.db
+                //             .query(r#"UPDATE $b_user_id SET project = NONE;"#)
+                //             .bind(("b_user_id", &join.user))
+                //             .await
+                //             .unwrap();
+                //     }
+                // };
             }
             surrealdb::Action::Delete => { /* println!("Join deleted: {}", join.id) */ }
             _ => println!("Action not supported"),
