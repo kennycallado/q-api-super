@@ -11,7 +11,7 @@ use super::manager::Credentials;
 #[derive(Clone)]
 pub struct IntervUsersManager {
     db: Surreal<Any>,
-    cred: Credentials
+    cred: Credentials,
 }
 
 impl IntervUsersManager {
@@ -25,9 +25,7 @@ impl IntervUsersManager {
             password: cred.pass.as_str(),
         };
 
-        db.signin(foo)
-        .await
-        .expect("Failed to signin");
+        db.signin(foo).await.expect("Failed to signin");
 
         Self { db, cred }
     }
@@ -91,7 +89,7 @@ impl IntervUsersManager {
                             .bind(("b_state", state))
                             .await
                             .unwrap();
-                    },
+                    }
                     UserState::Active | UserState::Standby => {
                         let state: String = user.state.into();
 
@@ -102,8 +100,8 @@ impl IntervUsersManager {
                             .bind(("b_state", state))
                             .await
                             .unwrap();
-                    },
-                    _ => { }
+                    }
+                    _ => {}
                 }
             }
             surrealdb::Action::Create => { /* println!("User created: {}", user.id) */ }

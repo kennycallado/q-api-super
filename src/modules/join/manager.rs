@@ -26,9 +26,7 @@ impl JoinManager {
             password: cred.pass.as_str(),
         };
 
-        db.signin(foo)
-        .await
-        .expect("Failed to signin");
+        db.signin(foo).await.expect("Failed to signin");
 
         db.use_ns("global")
             .use_db("main")
@@ -100,7 +98,7 @@ impl JoinManager {
                     })
                     .map_err(|e| {
                         eprintln!("Failed to get interv_user: {}", e);
-                        return "Error: interv_user"
+                        return "Error: interv_user";
                     })?;
 
                 let center = center_name_role.0;
@@ -108,8 +106,8 @@ impl JoinManager {
                 let role = center_name_role.2;
 
                 match role.as_str() {
-                    "parti" | "guest" => { },
-                    _ => { return Ok(()) }
+                    "parti" | "guest" => {}
+                    _ => return Ok(()),
                 }
 
                 let sql = format!(
@@ -123,8 +121,7 @@ impl JoinManager {
                     .db
                     .query(sql)
                     .bind(("b_user_id", &join.user))
-                    .bind(("b_role", &role))
-                    ;
+                    .bind(("b_role", &role));
 
                 match query.await {
                     Ok(mut res) => {
@@ -163,11 +160,7 @@ impl JoinManager {
                             .await
                             .unwrap();
 
-                        println!(
-                            "User {} join project {} \n",
-                            join.user,
-                            join.project,
-                        );
+                        println!("User {} join project {} \n", join.user, join.project,);
                     }
                     Err(e) => {
                         eprintln!("Failed to create interv_user: {}", e);

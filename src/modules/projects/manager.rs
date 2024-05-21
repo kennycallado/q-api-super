@@ -42,9 +42,7 @@ impl ProjectsManager {
             password: cred.pass.as_str(),
         };
 
-        db.signin(foo)
-        .await
-        .expect("Failed to signin");
+        db.signin(foo).await.expect("Failed to signin");
 
         db.use_ns("global")
             .use_db("main")
@@ -205,7 +203,6 @@ impl ProjectsManager {
             // save the buffer into a file
             let mut file = tokio::fs::File::create(&path).await.unwrap();
             file.write_all(&buffer).await.unwrap();
-
 
             // import the migration
             db.use_ns(center_name).use_db(project_name).await.unwrap();

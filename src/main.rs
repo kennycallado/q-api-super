@@ -1,8 +1,8 @@
 mod models;
 mod modules;
 
-use surrealdb::opt::auth::Root;
 use modules::projects::manager::Credentials;
+use surrealdb::opt::auth::Root;
 
 use crate::modules::join::manager::JoinManager;
 use crate::modules::projects::manager::ProjectsManager;

@@ -35,9 +35,7 @@ impl EventsManager {
             password: cred.pass.as_str(),
         };
 
-        db.signin(foo)
-        .await
-        .expect("Failed to signin");
+        db.signin(foo).await.expect("Failed to signin");
 
         Self {
             db,
