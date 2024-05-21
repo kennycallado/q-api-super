@@ -70,8 +70,9 @@ impl IntervUsersManager {
                 // println!("User updated: {}", user.id);
 
                 match user.state {
-                    UserState::Completed => {
+                    UserState::Completed | UserState::Exited => {
                         let state: String = user.state.into();
+
                         self.db.use_ns(center).use_db(project).await.unwrap();
                         self.db
                             .query(r#"
@@ -86,6 +87,17 @@ impl IntervUsersManager {
                                     UPDATE $b_id SET project = NONE; -- should be done by join events
                                 COMMIT TRANSACTION;
                             "#)
+                            .bind(("b_id", user.id))
+                            .bind(("b_state", state))
+                            .await
+                            .unwrap();
+                    },
+                    UserState::Active | UserState::Standby => {
+                        let state: String = user.state.into();
+
+                        self.db.use_ns("global").use_db("main").await.unwrap();
+                        self.db
+                            .query("UPDATE join SET state = $b_state, updated = time::now() WHERE in IS $b_id;")
                             .bind(("b_id", user.id))
                             .bind(("b_state", state))
                             .await
